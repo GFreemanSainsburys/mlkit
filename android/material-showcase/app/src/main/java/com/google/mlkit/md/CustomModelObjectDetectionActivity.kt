@@ -22,11 +22,13 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.hardware.Camera
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.View.OnClickListener
 import android.widget.TextView
+import android.speech.tts.TextToSpeech
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
@@ -50,11 +52,14 @@ import com.google.mlkit.md.productsearch.ProductAdapter
 import com.google.mlkit.md.settings.PreferenceUtils
 import com.google.mlkit.md.settings.SettingsActivity
 import java.io.IOException
+import java.util.*
+
 
 /** Demonstrates the object detection and custom classification workflow using camera preview.
  *  Modeled after LiveObjectDetectionActivity.java */
-class CustomModelObjectDetectionActivity : AppCompatActivity(), OnClickListener {
+class CustomModelObjectDetectionActivity : AppCompatActivity(), OnClickListener, TextToSpeech.OnInitListener {
 
+    private var tts: TextToSpeech? = null
     private var cameraSource: CameraSource? = null
     private var preview: CameraSourcePreview? = null
     private var graphicOverlay: GraphicOverlay? = null
@@ -76,7 +81,7 @@ class CustomModelObjectDetectionActivity : AppCompatActivity(), OnClickListener 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        tts = TextToSpeech(this, this)
         setContentView(R.layout.activity_live_object)
         preview = findViewById(R.id.camera_preview)
         graphicOverlay = findViewById<GraphicOverlay>(R.id.camera_preview_graphic_overlay).apply {
@@ -279,6 +284,10 @@ class CustomModelObjectDetectionActivity : AppCompatActivity(), OnClickListener 
                 val productList: List<Product> = detectObject.labels.map { label ->
                     Product("" /* imageUrl */, label.text, "" /* subtitle */)
                 }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    tts!!.speak(productList[0].title, TextToSpeech.QUEUE_FLUSH, null, "")
+                }
                 workflowModel?.onSearchCompleted(detectObject, productList)
             })
 
@@ -381,6 +390,22 @@ class CustomModelObjectDetectionActivity : AppCompatActivity(), OnClickListener 
 
     companion object {
         private const val TAG = "CustomModelODActivity"
-        private const val CUSTOM_MODEL_PATH = "custom_models/bird_classifier.tflite"
+        private const val CUSTOM_MODEL_PATH = "custom_models/product2.tflite"
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            // set US English as language for tts
+            val result = tts!!.setLanguage(Locale.UK)
+
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("TTS","The Language specified is not supported!")
+            } else {
+
+            }
+
+        } else {
+            Log.e("TTS", "Initilization Failed!")
+        }
     }
 }
